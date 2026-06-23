@@ -2,9 +2,9 @@
   "name": "streamhub",
   "version": "1.0.0",
   "description": "StreamHub is a full-stack video sharing platform that allows users to upload, stream, like, comment on, and organize videos into playlists. Built with React, Node.js, Express, MongoDB, and JWT authentication.",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/server.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,8 @@
     "prettier": "^3.8.4"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.7.2"
