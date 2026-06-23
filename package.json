@@ -1,0 +1,24 @@
+{
+  "name": "streamhub",
+  "version": "1.0.0",
+  "description": "StreamHub is a full-stack video sharing platform that allows users to upload, stream, like, comment on, and organize videos into playlists. Built with React, Node.js, Express, MongoDB, and JWT authentication.",
+  "main": "index.js",
+  "scripts": {
+    "dev" : "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sachindataninja123/streamhub.git"
+  },
+  "keywords": [],
+  "author": "Sachin Kushwaha",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/sachindataninja123/streamhub/issues"
+  },
+  "homepage": "https://github.com/sachindataninja123/streamhub#readme",
+  "dependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
