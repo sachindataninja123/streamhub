@@ -7,8 +7,8 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 const registerController = asyncHandler(async (req, res) => {
   const { username, email, fullname, password } = req.body;
 
-  if (!username || !email || !fullname || !password) {
-    throw new ApiError(404, "All fields are required!");
+  if ([username, email, fullname, password].some((field) => !field?.trim())) {
+    throw new ApiError(400, "All fields are required");
   }
 
   const user = await User.findOne({ $or: [{ email }, { username }] });
@@ -16,8 +16,20 @@ const registerController = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User already exists");
   }
 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  //   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+
+  let coverImageLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
+
+  //   console.log("BODY:", req.body);
+  //   console.log("FILES:", req.files);
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required!");
@@ -49,7 +61,7 @@ const registerController = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(200, createdUser, "User registered Successfully"));
+    .json(new ApiResponse(201, createdUser, "User registered Successfully"));
 });
 
 export { registerController };
