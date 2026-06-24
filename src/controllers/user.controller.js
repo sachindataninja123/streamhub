@@ -15,6 +15,8 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
     return { accessToken, refreshToken };
   } catch (error) {
+    console.log("error", error);
+
     throw new ApiError(
       500,
       "Error in generating accessTokens and RefreshTokens"
@@ -85,8 +87,12 @@ const registerController = asyncHandler(async (req, res) => {
 const loginController = asyncHandler(async (req, res) => {
   const { email, password, username } = req.body;
 
-  if (["email", "password", "username"].some((field) => !field?.trim())) {
-    throw new ApiError("400", "All fields are required!");
+  if (!(email || username)) {
+    throw new ApiError(400, "Email or username is required");
+  }
+
+  if (!password) {
+    throw new ApiError(400, "Password is required");
   }
 
   const existUser = await User.findOne({
@@ -130,4 +136,29 @@ const loginController = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerController, loginController };
+const logOutController = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged Out"));
+});
+
+export { registerController, loginController, logOutController };

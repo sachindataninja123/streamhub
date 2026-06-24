@@ -1,6 +1,11 @@
 import express from "express";
-import { loginController, registerController } from "../controllers/user.controller.js";
+import {
+  loginController,
+  logOutController,
+  registerController,
+} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import isAuth from "../middlewares/auth.middleware.js";
 
 const userRouter = express.Router();
 
@@ -19,6 +24,7 @@ userRouter.post(
   registerController
 );
 
-userRouter.post("/login" , loginController)
+userRouter.post("/login", loginController);
+userRouter.post("/logout", isAuth, logOutController);
 
 export default userRouter;
