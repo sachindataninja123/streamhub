@@ -214,7 +214,6 @@ const refreshTokenController = asyncHandler(async (req, res) => {
 });
 
 const updatePasswordController = asyncHandler(async (req, res) => {
-
   const { password, newPassword } = req.body;
 
   if (!password || !newPassword) {
@@ -222,10 +221,10 @@ const updatePasswordController = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findById(req.user._id).select("+password");
- 
+
   const isValidUser = await user.comparePassword(password);
   if (!isValidUser) {
-    throw new ApiError(401, "Invalid credentials!");
+    throw new ApiError(401, "Invalid old password!");
   }
 
   user.password = newPassword;
@@ -236,6 +235,55 @@ const updatePasswordController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Password changed successfully!"));
 });
 
+const getCurrentUserController = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select(
+    "-password -refreshToken"
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User fetched successfully!"));
+});
+
+const updateAccountDetailsController = asyncHandler(async (req, res) => {
+  const { fullname, username } = req.body;
+
+  if ([fullname, username].some((field) => !field?.trim())) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  const existingUser = await User.findOne({
+    username,
+    _id: { $ne: req.user._id },
+  });
+
+  if (existingUser) {
+    throw new ApiError(409, "username already exists");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullname,
+        username,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User details updated successfully"));
+});
+
 
 
 export {
@@ -243,5 +291,7 @@ export {
   loginController,
   logOutController,
   refreshTokenController,
-  updatePasswordController
+  updatePasswordController,
+  getCurrentUserController,
+  updateAccountDetailsController,
 };
