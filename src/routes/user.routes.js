@@ -1,6 +1,8 @@
 import express from "express";
 import {
   getCurrentUserController,
+  getUserChannelProfile,
+  getWatchUserHistory,
   loginController,
   logOutController,
   refreshTokenController,
@@ -38,15 +40,18 @@ userRouter.patch("/change-password", isAuth, updatePasswordController);
 userRouter.patch("/update-details", isAuth, updateAccountDetailsController);
 userRouter.patch(
   "/update-avatar",
-  upload.single("avatar"),
   isAuth,
+  upload.single("avatar"),
   updateAvatarController
 );
 userRouter.patch(
   "/update-coverImage",
-  upload.single("coverImage"),
   isAuth,
+  upload.single("coverImage"),
   updateCoverImageController
 );
+
+userRouter.get("/channel/:username", isAuth, getUserChannelProfile);
+userRouter.get("/history", isAuth, getWatchUserHistory);
 
 export default userRouter;
