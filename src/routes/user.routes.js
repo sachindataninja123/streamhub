@@ -4,6 +4,7 @@ import {
   logOutController,
   refreshTokenController,
   registerController,
+  updatePasswordController,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import isAuth from "../middlewares/auth.middleware.js";
@@ -28,5 +29,6 @@ userRouter.post(
 userRouter.post("/login", loginController);
 userRouter.post("/logout", isAuth, logOutController);
 userRouter.post("/refresh-token", refreshTokenController);
+userRouter.put("/change-password", isAuth, updatePasswordController);
 
 export default userRouter;

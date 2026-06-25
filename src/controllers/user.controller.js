@@ -213,9 +213,35 @@ const refreshTokenController = asyncHandler(async (req, res) => {
   }
 });
 
+const updatePasswordController = asyncHandler(async (req, res) => {
+
+  const { password, newPassword } = req.body;
+
+  if (!password || !newPassword) {
+    throw new ApiError(401, "Old password and newPassword are required");
+  }
+
+  const user = await User.findById(req.user._id).select("+password");
+ 
+  const isValidUser = await user.comparePassword(password);
+  if (!isValidUser) {
+    throw new ApiError(401, "Invalid credentials!");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully!"));
+});
+
+
+
 export {
   registerController,
   loginController,
   logOutController,
   refreshTokenController,
+  updatePasswordController
 };
