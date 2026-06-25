@@ -284,7 +284,69 @@ const updateAccountDetailsController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "User details updated successfully"));
 });
 
+const updateAvatarController = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
 
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar is required!");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar.url) {
+    throw new ApiError(500, "Error in Avatar uploading on cloudinary!");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(400, "User not found!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar updated successfully!"));
+});
+
+const updateCoverImageController = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "CoverImage is required!");
+  }
+
+  const uploadCoverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+  if (!uploadCoverImage.url) {
+    throw new ApiError(400, "Error in uploading CoverImage at cloudinary!");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: uploadCoverImage.url,
+      },
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(400, "User not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "CoverImage updated Successfully"));
+});
 
 export {
   registerController,
@@ -294,4 +356,6 @@ export {
   updatePasswordController,
   getCurrentUserController,
   updateAccountDetailsController,
+  updateAvatarController,
+  updateCoverImageController
 };
