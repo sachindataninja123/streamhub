@@ -2,7 +2,10 @@ import { Video } from "../models/video.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 
 const uploadVideoController = asyncHandler(async (req, res) => {
@@ -284,9 +287,134 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
 });
 
+const updateThumbnail = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, "Thumbnail is missing!");
+  }
+
+  const thumbnailLocalPath = req.file.path;
+  const { videoId } = req.params;
+
+  const currVideo = await Video.findById(videoId);
+  if (!currVideo) {
+    throw new ApiError(404, "Video not found!");
+  }
+
+  if (currVideo.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not allowed to update this video");
+  }
+
+  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+  if (!thumbnail?.url) {
+    throw new ApiError(500, "Error uploading thumbnail to Cloudinary!");
+  }
+
+  const oldThumbnailPublicId = currVideo.thumbnail?.public_id;
+
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        thumbnail: {
+          url: thumbnail.url,
+          public_id: thumbnail.public_id,
+        },
+      },
+    },
+    { new: true }
+  );
+
+  if (oldThumbnailPublicId) {
+    await deleteFromCloudinary(oldThumbnailPublicId);
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedVideo, "Thumbnail updated successfully"));
+});
+
+const deleteVideoController = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found!"); 
+  }
+
+
+  if (video.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not allowed to delete this video");
+  }
+
+  const currentThumbnailPublicId = video.thumbnail?.public_id;
+  const currentVideoFilePublicId = video.videoFile?.public_id;
+
+  // 3. delete thumbnail from cloudinary
+  if (currentThumbnailPublicId) {
+    await deleteFromCloudinary(currentThumbnailPublicId); // image (default)
+  }
+
+  // 4. delete video file from cloudinary
+  if (currentVideoFilePublicId) {
+    await deleteFromCloudinary(currentVideoFilePublicId, "video"); // ✅ resource_type video
+  }
+
+  // 5. delete related comments and likes
+  await Comment.deleteMany({ video: videoId });
+  await Like.deleteMany({ video: videoId });
+
+  // 6. delete video from DB
+  await Video.findByIdAndDelete(videoId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted successfully!"));
+});
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  // 1. validate videoId
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+
+  // 2. find video
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found!");
+  }
+
+  // 3. owner check
+  if (video.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not allowed to change publish status");
+  }
+
+  // 4. toggle
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
+    { $set: { isPublished: !video.isPublished } }, // ✅ flips true→false or false→true
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { isPublished: updatedVideo.isPublished },
+        `Video is now ${updatedVideo.isPublished ? "published" : "unpublished"}`
+      )
+    );
+});
+
 export {
   uploadVideoController,
   getVideoByIdController,
   getAllVideosController,
-  updateVideoDetails
+  updateVideoDetails,
+  updateThumbnail,
+  deleteVideoController,
+  togglePublishStatus
 };
