@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Comment from "../models/comment.model.js";
+import Like from "../models/like.model.js";
 
 const addCommentController = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
@@ -69,4 +70,29 @@ const updateCommentController = asyncHandler(async (req, res) => {
     );
 });
 
-export { addCommentController, updateCommentController };
+const deleteCommentController = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(commentId)) {
+    throw new ApiError(404, "Comment is invalid!");
+  }
+
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    throw new ApiError(404, "Comment is not found!");
+  }
+
+  if (comment.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(404, "you can only delete own comments!");
+  }
+
+  await Like.deleteMany({ comment: commentId });
+
+  await Comment.findByIdAndDelete(commentId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "comment deleted successfully!"));
+});
+
+export { addCommentController, updateCommentController , deleteCommentController };
