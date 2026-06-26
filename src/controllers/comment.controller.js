@@ -95,4 +95,100 @@ const deleteCommentController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "comment deleted successfully!"));
 });
 
-export { addCommentController, updateCommentController , deleteCommentController };
+const getVideoComments = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "VideoId is invalid!"); 
+  }
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video is not found!");
+  }
+
+  const pipeline = [
+    // get all comments of this video
+    {
+      $match: { video: new mongoose.Types.ObjectId(videoId) },
+    },
+
+    //  get owner details
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: { username: 1, avatar: 1 },
+          },
+        ],
+      },
+    },
+
+    //  get likes on each comment
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "comment",
+        as: "likes",
+      },
+    },
+
+    //  add extra fields
+    {
+      $addFields: {
+        owner: { $first: "$owner" },
+        likesCount: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: { $in: [req.user?._id, "$likes.likedBy"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+
+    //  remove likes array from response
+    {
+      $project: {
+        likes: 0,
+      },
+    },
+
+    // newest comments first
+    {
+      $sort: { createdAt: -1 },
+    },
+  ];
+
+  const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
+  };
+
+  const comments = await Comment.aggregatePaginate(
+    Comment.aggregate(pipeline),
+    options
+  );
+
+  if (!comments.docs.length) {
+    throw new ApiError(404, "No comments found!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, comments, "Comments fetched successfully"));
+});
+
+export {
+  addCommentController,
+  updateCommentController,
+  deleteCommentController,
+  getVideoComments
+};
