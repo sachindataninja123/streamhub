@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/user.routes.js";
+import healthRouter from "./routes/healthCheck.routes.js";
 
 const app = express();
 
@@ -17,11 +18,12 @@ app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 
-app.get("/" , (req, res) => {
-  res.send("hello")
-})
+app.get("/", (req, res) => {
+  res.send("hello");
+});
 
 //routes
+app.use("/api/v1", healthRouter);
 app.use("/api/v1/users", userRouter);
 
 export default app;
