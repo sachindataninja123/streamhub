@@ -7,6 +7,8 @@ import {
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
+import Comment from "../models/comment.model.js";
+import Like from "../models/like.model.js";
 
 const uploadVideoController = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
@@ -46,8 +48,8 @@ const uploadVideoController = asyncHandler(async (req, res) => {
   });
 
   return res
-    .status(200)
-    .json(new ApiResponse(200, video, "Video Uploaded successfully"));
+    .status(201)
+    .json(new ApiResponse(201, video, "Video Uploaded successfully"));
 });
 
 const getVideoByIdController = async (req, res) => {
@@ -336,12 +338,10 @@ const updateThumbnail = asyncHandler(async (req, res) => {
 const deleteVideoController = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
 
-
   const video = await Video.findById(videoId);
   if (!video) {
-    throw new ApiError(404, "Video not found!"); 
+    throw new ApiError(404, "Video not found!");
   }
-
 
   if (video.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You are not allowed to delete this video");
@@ -350,20 +350,16 @@ const deleteVideoController = asyncHandler(async (req, res) => {
   const currentThumbnailPublicId = video.thumbnail?.public_id;
   const currentVideoFilePublicId = video.videoFile?.public_id;
 
-
   if (currentThumbnailPublicId) {
-    await deleteFromCloudinary(currentThumbnailPublicId); // image (default)
+    await deleteFromCloudinary(currentThumbnailPublicId); 
   }
-
 
   if (currentVideoFilePublicId) {
-    await deleteFromCloudinary(currentVideoFilePublicId, "video"); // 
+    await deleteFromCloudinary(currentVideoFilePublicId, "video"); 
   }
 
-  
   await Comment.deleteMany({ video: videoId });
   await Like.deleteMany({ video: videoId });
-
 
   await Video.findByIdAndDelete(videoId);
 
@@ -379,18 +375,18 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video ID");
   }
 
-  
+  // 2. find video
   const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found!");
   }
 
-
+  // 3. owner check
   if (video.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You are not allowed to change publish status");
   }
 
-
+  // 4. toggle
   const updatedVideo = await Video.findByIdAndUpdate(
     videoId,
     { $set: { isPublished: !video.isPublished } },
@@ -415,5 +411,5 @@ export {
   updateVideoDetails,
   updateThumbnail,
   deleteVideoController,
-  togglePublishStatus
+  togglePublishStatus,
 };
