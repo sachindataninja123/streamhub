@@ -162,7 +162,7 @@ const getAllVideosController = asyncHandler(async (req, res) => {
 
   const pipeline = [];
 
-  // 1. filter by userId if provided
+ 
   if (userId) {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       throw new ApiError(400, "Invalid user ID");
@@ -172,7 +172,7 @@ const getAllVideosController = asyncHandler(async (req, res) => {
     });
   }
 
-  // 2. search by title or description
+  // search by title or description
   if (query) {
     pipeline.push({
       $match: {
@@ -184,7 +184,7 @@ const getAllVideosController = asyncHandler(async (req, res) => {
     });
   }
 
-  // 3. get owner details
+  // get owner details
   pipeline.push({
     $lookup: {
       from: "users",
@@ -199,7 +199,7 @@ const getAllVideosController = asyncHandler(async (req, res) => {
     },
   });
 
-  // 4. get likes count
+  // get likes count
   pipeline.push({
     $lookup: {
       from: "likes",
@@ -209,7 +209,7 @@ const getAllVideosController = asyncHandler(async (req, res) => {
     },
   });
 
-  // 5. add extra fields
+  // add extra fields
   pipeline.push({
     $addFields: {
       owner: { $first: "$owner" },
@@ -217,19 +217,19 @@ const getAllVideosController = asyncHandler(async (req, res) => {
     },
   });
 
-  // 6. remove likes array (not needed in response)
+  // remove likes array (not needed in response)
   pipeline.push({
     $project: {
       likes: 0,
     },
   });
 
-  // 7. sort
+  // sort
   pipeline.push({
     $sort: { [sortBy]: sortType === "desc" ? -1 : 1 },
   });
 
-  // 8. pagination
+  // pagination
   const options = {
     page: parseInt(page),
     limit: parseInt(limit),
@@ -350,21 +350,21 @@ const deleteVideoController = asyncHandler(async (req, res) => {
   const currentThumbnailPublicId = video.thumbnail?.public_id;
   const currentVideoFilePublicId = video.videoFile?.public_id;
 
-  // 3. delete thumbnail from cloudinary
+
   if (currentThumbnailPublicId) {
     await deleteFromCloudinary(currentThumbnailPublicId); // image (default)
   }
 
-  // 4. delete video file from cloudinary
+
   if (currentVideoFilePublicId) {
-    await deleteFromCloudinary(currentVideoFilePublicId, "video"); // ✅ resource_type video
+    await deleteFromCloudinary(currentVideoFilePublicId, "video"); // 
   }
 
-  // 5. delete related comments and likes
+  
   await Comment.deleteMany({ video: videoId });
   await Like.deleteMany({ video: videoId });
 
-  // 6. delete video from DB
+
   await Video.findByIdAndDelete(videoId);
 
   return res
@@ -375,26 +375,25 @@ const deleteVideoController = asyncHandler(async (req, res) => {
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
 
-  // 1. validate videoId
   if (!mongoose.Types.ObjectId.isValid(videoId)) {
     throw new ApiError(400, "Invalid video ID");
   }
 
-  // 2. find video
+  
   const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found!");
   }
 
-  // 3. owner check
+
   if (video.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You are not allowed to change publish status");
   }
 
-  // 4. toggle
+
   const updatedVideo = await Video.findByIdAndUpdate(
     videoId,
-    { $set: { isPublished: !video.isPublished } }, // ✅ flips true→false or false→true
+    { $set: { isPublished: !video.isPublished } },
     { new: true }
   );
 
