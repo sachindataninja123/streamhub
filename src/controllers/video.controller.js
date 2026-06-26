@@ -147,4 +147,146 @@ const getVideoByIdController = async (req, res) => {
   }
 };
 
-export { uploadVideoController, getVideoByIdController };
+const getAllVideosController = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy = "createdAt",
+    sortType = "desc",
+    userId,
+  } = req.query;
+
+  const pipeline = [];
+
+  // 1. filter by userId if provided
+  if (userId) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new ApiError(400, "Invalid user ID");
+    }
+    pipeline.push({
+      $match: { owner: new mongoose.Types.ObjectId(userId) },
+    });
+  }
+
+  // 2. search by title or description
+  if (query) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { title: { $regex: query, $options: "i" } },
+          { description: { $regex: query, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  // 3. get owner details
+  pipeline.push({
+    $lookup: {
+      from: "users",
+      localField: "owner",
+      foreignField: "_id",
+      as: "owner",
+      pipeline: [
+        {
+          $project: { username: 1, avatar: 1 },
+        },
+      ],
+    },
+  });
+
+  // 4. get likes count
+  pipeline.push({
+    $lookup: {
+      from: "likes",
+      localField: "_id",
+      foreignField: "video",
+      as: "likes",
+    },
+  });
+
+  // 5. add extra fields
+  pipeline.push({
+    $addFields: {
+      owner: { $first: "$owner" },
+      likesCount: { $size: "$likes" },
+    },
+  });
+
+  // 6. remove likes array (not needed in response)
+  pipeline.push({
+    $project: {
+      likes: 0,
+    },
+  });
+
+  // 7. sort
+  pipeline.push({
+    $sort: { [sortBy]: sortType === "desc" ? -1 : 1 },
+  });
+
+  // 8. pagination
+  const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
+  };
+
+  const videos = await Video.aggregatePaginate(
+    Video.aggregate(pipeline),
+    options
+  );
+
+  if (!videos.docs.length) {
+    throw new ApiError(404, "No videos found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, videos, "All videos fetched successfully"));
+});
+
+const updateVideoDetails = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { title, description } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+
+  if (!title && !description) {
+    throw new ApiError(400, "At least one field is required to update");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  if (video.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not allowed to update this video");
+  }
+
+  const updatedVideo = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        title: title || video.title,
+        description: description || video.description,
+      },
+    },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
+});
+
+export {
+  uploadVideoController,
+  getVideoByIdController,
+  getAllVideosController,
+  updateVideoDetails
+};
