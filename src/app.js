@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
 //routes
 app.use("/api/v1", healthRouter);
 app.use("/api/v1/users", userRouter);
-app.use("/api/v1/videos" , videoRouter)
-// app.use("/api/v1/comments" , commentRouter)
+app.use("/api/v1/videos", videoRouter);
+app.use("/api/v1/comments", commentRouter);
 
 export default app;
