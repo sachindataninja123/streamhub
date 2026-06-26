@@ -52,105 +52,105 @@ const uploadVideoController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, video, "Video Uploaded successfully"));
 });
 
-const getVideoByIdController = async (req, res) => {
-  try {
-    const { videoId } = req.params;
+const getVideoByIdController = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(videoId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid video ID" });
-    }
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(404, "Invalid video ID");
+  }
 
-    const video = await Video.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(videoId) },
-      },
+  const video = await Video.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(videoId) },
+    },
 
-      // get owner details
-      {
-        $lookup: {
-          from: "users",
-          localField: "owner",
-          foreignField: "_id",
-          as: "owner",
-          pipeline: [
-            {
-              $project: {
-                username: 1,
-                avatar: 1,
-              },
+    // get owner details
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
             },
-          ],
-        },
+          },
+        ],
       },
+    },
 
-      // get likes count
-      {
-        $lookup: {
-          from: "likes",
-          localField: "_id",
-          foreignField: "video",
-          as: "likes",
-        },
+    // get likes count
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
       },
+    },
 
-      // get comments count
-      {
-        $lookup: {
-          from: "comments",
-          localField: "_id",
-          foreignField: "video",
-          as: "comments",
-        },
+    // get comments count
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
       },
+    },
 
-      {
-        $addFields: {
-          owner: { $first: "$owner" },
-          likesCount: { $size: "$likes" },
-          commentsCount: { $size: "$comments" },
-          isLiked: {
-            $cond: {
-              if: { $in: [req.user?._id, "$likes.likedBy"] },
-              then: true,
-              else: false,
-            },
+    {
+      $addFields: {
+        owner: { $first: "$owner" },
+        likesCount: { $size: "$likes" },
+        commentsCount: { $size: "$comments" },
+        isLiked: {
+          $cond: {
+            if: { $in: [req.user?._id, "$likes.likedBy"] },
+            then: true,
+            else: false,
           },
         },
       },
+    },
 
-      {
-        $project: {
-          videoFile: 1,
-          thumbnail: 1,
-          title: 1,
-          description: 1,
-          duration: 1,
-          views: 1,
-          owner: 1,
-          likesCount: 1,
-          commentsCount: 1,
-          isLiked: 1,
-          createdAt: 1,
-        },
+    {
+      $project: {
+        videoFile: 1,
+        thumbnail: 1,
+        title: 1,
+        description: 1,
+        duration: 1,
+        views: 1,
+        owner: 1,
+        likesCount: 1,
+        commentsCount: 1,
+        isLiked: 1,
+        createdAt: 1,
       },
-    ]);
+    },
+  ]);
 
-    if (!video.length) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Video not found" });
-    }
-
-    // increment views
-    await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } });
-
-    return res.status(200).json({ success: true, video: video[0] });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+  if (!video.length) {
+    throw new ApiError(404, "Video not found!");
   }
-};
+
+  // increment views
+  await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { video: video[0] },
+        "Video details fetched successfully"
+      )
+    );
+});
 
 const getAllVideosController = asyncHandler(async (req, res) => {
   const {
@@ -164,7 +164,6 @@ const getAllVideosController = asyncHandler(async (req, res) => {
 
   const pipeline = [];
 
- 
   if (userId) {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       throw new ApiError(400, "Invalid user ID");
@@ -351,11 +350,11 @@ const deleteVideoController = asyncHandler(async (req, res) => {
   const currentVideoFilePublicId = video.videoFile?.public_id;
 
   if (currentThumbnailPublicId) {
-    await deleteFromCloudinary(currentThumbnailPublicId); 
+    await deleteFromCloudinary(currentThumbnailPublicId);
   }
 
   if (currentVideoFilePublicId) {
-    await deleteFromCloudinary(currentVideoFilePublicId, "video"); 
+    await deleteFromCloudinary(currentVideoFilePublicId, "video");
   }
 
   await Comment.deleteMany({ video: videoId });
