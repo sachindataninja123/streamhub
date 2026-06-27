@@ -100,4 +100,96 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     );
 });
 
-export { toggleVideoLike, toggleCommentLike, toggleTweetLike };
+const getLikedVideos = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const likedVideos = await Like.aggregate([
+    // find all likes by this user where video field exists
+    {
+      $match: {
+        likedBy: new mongoose.Types.ObjectId(userId),
+        video: { $exists: true, $ne: null }, //only video likes, not comment/tweet likes
+      },
+    },
+
+    // get video details
+    {
+      $lookup: {
+        from: "videos",
+        localField: "video",
+        foreignField: "_id",
+        as: "video",
+        pipeline: [
+          // get video owner details inside video
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: { username: 1, avatar: 1 },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: { $first: "$owner" },
+            },
+          },
+          {
+            $project: {
+              title: 1,
+              thumbnail: 1,
+              duration: 1,
+              views: 1,
+              owner: 1,
+              createdAt: 1,
+            },
+          },
+        ],
+      },
+    },
+
+    // flatten video array
+    {
+      $addFields: {
+        video: { $first: "$video" },
+      },
+    },
+
+    // remove videos that may have been deleted
+    {
+      $match: {
+        video: { $exists: true, $ne: null },
+      },
+    },
+
+    // newest liked first
+    {
+      $sort: { createdAt: -1 },
+    },
+
+    // return only video field
+    {
+      $project: {
+        video: 1,
+        _id: 0,
+      },
+    },
+  ]);
+
+  if (!likedVideos.length) {
+    throw new ApiError(404, "No liked videos found!");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, likedVideos, "Liked videos fetched successfully")
+    );
+});
+
+export { toggleVideoLike, toggleCommentLike, toggleTweetLike, getLikedVideos };
