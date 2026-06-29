@@ -3,6 +3,7 @@ import isAuth from "../middlewares/auth.middleware.js";
 import {
   addVideosToPlaylist,
   createPlayList,
+  deletePlayList,
   removeVideosFromPlaylist,
 } from "../controllers/PlayList.controller.js";
 
@@ -15,5 +16,6 @@ playlistRouter.patch(
   isAuth,
   removeVideosFromPlaylist
 );
+playlistRouter.delete("/delete/:playlistId", isAuth, deletePlayList);
 
 export default playlistRouter;

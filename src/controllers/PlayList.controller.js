@@ -127,4 +127,27 @@ const removeVideosFromPlaylist = asyncHandler(async (req, res) => {
     );
 });
 
-export { createPlayList, addVideosToPlaylist , removeVideosFromPlaylist};
+const deletePlayList = asyncHandler(async (req, res) => {
+  const { playlistId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+    throw new ApiError(400, "PlaylistId is inValid!");
+  }
+
+  const playList = await PlayList.findById(playlistId);
+  if (!playList) {
+    throw new ApiError(404, "playlist not found!");
+  }
+
+  if (playList.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Access denied!");
+  }
+
+  await PlayList.findByIdAndDelete(playlistId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "playlist deleted successfully!"));
+});
+
+export { createPlayList, addVideosToPlaylist, removeVideosFromPlaylist , deletePlayList };
