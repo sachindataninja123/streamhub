@@ -255,7 +255,6 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Playlist Id is invalid!");
   }
 
-
   const playlist = await PlayList.aggregate([
     {
       $match: { _id: new mongoose.Types.ObjectId(playlistId) },
@@ -350,8 +349,44 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
+    .json(new ApiResponse(200, playlist[0], "Playlist fetched successfully!"));
+});
+
+const updatePlaylist = asyncHandler(async (req, res) => {
+  const { playlistId } = req.params;
+  const { name, description } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+    throw new ApiError(400, "PlayListId is not valid!");
+  }
+
+  if (!name || !description) {
+    throw new ApiError(400, "Name and description for required!");
+  }
+
+  const playList = await PlayList.findById(playlistId);
+  if (!playList) {
+    throw new ApiError(404, "Playlist not found!");
+  }
+
+  if (playList.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not allowed to update this playlist!");
+  }
+
+  const updatedPlayList = await PlayList.findByIdAndUpdate(
+    playlistId,
+    {
+      $set: { name, description },
+    },
+    {
+      new: true,
+    }
+  );
+
+  return res
+    .status(200)
     .json(
-      new ApiResponse(200, playlist[0], "Playlist fetched successfully!")
+      new ApiResponse(200, updatedPlayList, "Playlist updated successfully!")
     );
 });
 
@@ -361,5 +396,6 @@ export {
   removeVideosFromPlaylist,
   deletePlayList,
   getUserPlaylists,
-  getPlaylistById
+  getPlaylistById,
+  updatePlaylist,
 };

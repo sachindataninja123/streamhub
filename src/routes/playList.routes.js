@@ -7,6 +7,7 @@ import {
   getPlaylistById,
   getUserPlaylists,
   removeVideosFromPlaylist,
+  updatePlaylist,
 } from "../controllers/PlayList.controller.js";
 
 const playlistRouter = express.Router();
@@ -21,5 +22,6 @@ playlistRouter.patch(
 playlistRouter.delete("/delete/:playlistId", isAuth, deletePlayList);
 playlistRouter.get("/user/:userId", isAuth, getUserPlaylists);
 playlistRouter.get("/:playlistId", isAuth, getPlaylistById);
+playlistRouter.patch("/update/:playlistId" , isAuth , updatePlaylist)
 
 export default playlistRouter;
