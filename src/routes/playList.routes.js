@@ -4,6 +4,8 @@ import {
   addVideosToPlaylist,
   createPlayList,
   deletePlayList,
+  getPlaylistById,
+  getUserPlaylists,
   removeVideosFromPlaylist,
 } from "../controllers/PlayList.controller.js";
 
@@ -17,5 +19,7 @@ playlistRouter.patch(
   removeVideosFromPlaylist
 );
 playlistRouter.delete("/delete/:playlistId", isAuth, deletePlayList);
+playlistRouter.get("/user/:userId", isAuth, getUserPlaylists);
+playlistRouter.get("/:playlistId", isAuth, getPlaylistById);
 
 export default playlistRouter;
